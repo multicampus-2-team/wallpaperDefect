@@ -1,4 +1,11 @@
 import os
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
+import tensorflow as tf
+from tensorflow.keras.optimizers import RMSprop
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import keras.utils as image
+import numpy as np
 
 # 기본 경로
 base_dir = '../../open/Codes/basic/'
@@ -23,9 +30,6 @@ print(train_skirting_fnames[:5])
 
 print('Total training furniture images :', len(os.listdir(train_furniture_dir)))
 
-import matplotlib.image as mpimg
-import matplotlib.pyplot as plt
-
 nrows, ncols = 4, 4
 pic_index = 0
 
@@ -49,8 +53,6 @@ for i, img_path in enumerate(next_cat_pix+next_dog_pix):
 
 plt.show()
 
-import tensorflow as tf
-
 
 model = tf.keras.models.Sequential([
   tf.keras.layers.Conv2D(16, (3,3), activation='relu', input_shape=(150, 150, 3)),
@@ -66,14 +68,9 @@ model = tf.keras.models.Sequential([
 
 #model.summary()
 
-from tensorflow.keras.optimizers import RMSprop
-
 model.compile(optimizer=RMSprop(learning_rate=0.001),
             loss='binary_crossentropy',
             metrics = ['accuracy'])
-
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-
 
 train_datagen = ImageDataGenerator( rescale = 1.0/255. )
 test_datagen  = ImageDataGenerator( rescale = 1.0/255. )
@@ -93,8 +90,6 @@ history = model.fit(train_generator,
                     epochs=10,
                     validation_steps=9,
                     verbose=2)
-
-import matplotlib.pyplot as plt
 
 acc = history.history['accuracy']
 val_acc = history.history['val_accuracy']
@@ -116,3 +111,19 @@ plt.title('Training and validation loss')
 plt.legend()
 
 plt.show()
+
+
+img=image.load_img('../../open/Codes/basic/test.png', target_size=(150, 150))
+
+x=image.img_to_array(img)
+x=np.expand_dims(x, axis=0)
+images = np.vstack([x])
+
+classes = model.predict(images, batch_size=10)
+
+print(classes[0])
+
+if classes[0]>0:
+    print("걸레받이")
+else:
+    print("가구수정")
