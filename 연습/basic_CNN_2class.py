@@ -127,3 +127,9 @@ if classes[0]>0:
     print("걸레받이")
 else:
     print("가구수정")
+
+folder_list = os.listdir(train_dir)
+folder_dict={}
+for i,v in enumerate(folder_list):
+    folder_dict[i]=v
+print(folder_dict[classes[0]])
