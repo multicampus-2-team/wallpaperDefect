@@ -7,6 +7,10 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import keras.utils as image
 import numpy as np
 
+from PyQt5.QtWidgets import *
+from PyQt5 import uic
+from PyQt5.QtWidgets import QApplication, QMainWindow
+
 # 기본 경로
 base_dir = '../../open/Codes/basic/'
 
@@ -66,7 +70,7 @@ model = tf.keras.models.Sequential([
   tf.keras.layers.Dense(1, activation='sigmoid')
 ])
 
-#model.summary()
+model.summary()
 
 model.compile(optimizer=RMSprop(learning_rate=0.001),
             loss='binary_crossentropy',
@@ -113,7 +117,7 @@ plt.legend()
 plt.show()
 
 
-img=image.load_img('../../open/Codes/basic/test.png', target_size=(150, 150))
+img=image.load_img('../../open/Codes/basic/cap_eroded.png', target_size=(150, 150))
 
 x=image.img_to_array(img)
 x=np.expand_dims(x, axis=0)
@@ -123,13 +127,23 @@ classes = model.predict(images, batch_size=10)
 
 print(classes[0])
 
-if classes[0]>0:
-    print("걸레받이")
-else:
-    print("가구수정")
+from io import StringIO
 
-folder_list = os.listdir(train_dir)
-folder_dict={}
-for i,v in enumerate(folder_list):
-    folder_dict[i]=v
-print(folder_dict[classes[0]])
+def return_print(*message):
+    io = StringIO()
+    print(*message, file=io, end="")
+    return io.getvalue()
+
+
+import sys
+
+if classes[0]>0:
+    sys.stdout = open('identified_output.txt', 'w', encoding="UTF-8-sig")
+    identified = return_print("걸레받이")
+    print(identified)
+else:
+    sys.stdout = open('identified_output.txt', 'w', encoding="UTF-8-sig")
+    identified = return_print("가구수정")
+    print(identified)
+
+#
