@@ -1,160 +1,93 @@
-import cv2 as cv
 import sys
+import cv2
 import os
-from PyQt5 import QtCore
-from PyQt5 import QtWidgets
-from PyQt5 import QtGui
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget, QMessageBox, QFileDialog
 
-class ShowVideo(QtCore.QObject):
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("도배 하자 유형 분류기")
+        self.setGeometry(100, 100, 800, 600)
 
-    flag = 0
-    camera = cv.VideoCapture(0)
+        self.camera_label = QLabel(self)
+        self.camera_label.setAlignment(Qt.AlignCenter)
+        self.camera_label.setMinimumSize(640, 480)  # 최소 크기 설정
 
-    ret, image = camera.read()
-    height, width = image.shape[:2]
+        self.text_edit = QTextEdit(self)
+        self.setCentralWidget(self.text_edit)
 
-    VideoSignal1 = QtCore.pyqtSignal(QtGui.QImage)
-    VideoSignal2 = QtCore.pyqtSignal(QtGui.QImage)
+        self.camera_button = QPushButton("카메라 열기", self)
+        self.camera_button.clicked.connect(self.start_camera)
 
-    def __init__(self, parent=None):
-        super(ShowVideo, self).__init__(parent)
-        #self.setupUi(self)
-        #self.fontSize = 10
+        self.capture_button = QPushButton("캡처", self)
+        self.capture_button.clicked.connect(self.capture_frame)
 
-        #self.btn_printIdentifyText.clicked.connect(self.printTextEdit)
+        self.prediction_button = QPushButton("유형 예측", self)
+        self.prediction_button.clicked.connect(self.predict)
 
-        #self.textEdit = QtWidgets.QTextEdit()
-        #layout = QtWidgets.QVBowLayout()
-        #layout.addWidget(self.textEdit)
-        #self.setLayout(layout)
+        layout = QVBoxLayout()
+        layout.addWidget(self.camera_label)
+        layout.addWidget(self.text_edit)
+        layout.addWidget(self.camera_button)
+        layout.addWidget(self.capture_button)
+        layout.addWidget(self.prediction_button)
 
-    def printTextEdit(self):
-        print(self.textedit_Test.toPlainText())
+        central_widget = QWidget(self)
+        central_widget.setLayout(layout)
+        self.setCentralWidget(central_widget)
 
-    @QtCore.pyqtSlot()
-    def startVideo(self):
-        global image
+        self.camera = cv2.VideoCapture(0)
+        self.camera_timer = QTimer(self)
+        self.camera_timer.timeout.connect(self.display_camera_frame)
 
-        run_video = True
-        while run_video:
-            ret, image = self.camera.read()
-            color_swapped_image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
+    def start_camera(self):
+        if not self.camera_timer.isActive():
+            self.camera_button.setText("카메라 끄기")
+            self.camera_timer.start(30)
+        else:
+            self.camera_button.setText("카메라 열기")
+            self.camera_timer.stop()
+            self.camera.release()
+            self.camera_label.clear()
 
-            qt_image1 = QtGui.QImage(color_swapped_image.data,
-                                    self.width,
-                                    self.height,
-                                    color_swapped_image.strides[0],
-                                    QtGui.QImage.Format_RGB888)
-            self.VideoSignal1.emit(qt_image1)
+    def display_camera_frame(self):
+        ret, frame = self.camera.read()
+        if ret:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image = QImage(frame.data, frame.shape[1], frame.shape[0], QImage.Format_RGB888)
+            pixmap = QPixmap.fromImage(image)
+            self.camera_label.setPixmap(pixmap.scaled(self.camera_label.size(), Qt.KeepAspectRatio))
 
+    def capture_frame(self):
+        ret, frame = self.camera.read()
+        if ret:
+            file_path, _ = QFileDialog.getSaveFileName(self, "Save Image", "", "JPEG Files (*.jpg)")
+            if file_path:
+                cv2.imwrite(file_path, frame)
+                QMessageBox.information(self, "Capture", "Image captured successfully!")
 
-            if self.flag:
-                img_gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
-                img_canny = cv.Canny(img_gray, 50, 100)
-                img_dilated = cv.dilate(img_canny, (7, 7), iterations=3)
-                img_eroded = cv.erode(img_dilated, (7, 7), iterations=3)
-
-                qt_image2 = QtGui.QImage(img_canny.data,
-                                         self.width,
-                                         self.height,
-                                         img_canny.strides[0],
-                                         QtGui.QImage.Format_Grayscale8)
-
-                self.VideoSignal2.emit(qt_image2)
-
-
-
-            loop = QtCore.QEventLoop()
-            QtCore.QTimer.singleShot(25, loop.quit) #25 ms
-            loop.exec_()
-
-    @QtCore.pyqtSlot()
-    def canny(self):
-        self.flag = 1 - self.flag
-
-    def identify(self):
+    def predict(self):
         #cap = cv.VideoCapture(0)
         #cap_canny = cv.Canny(cap, 50, 100)
         #cap_dilated = cv.dilate(cap_canny, (7, 7), iterations=3)
         #cap_eroded = cv.erode(cap_dilated, (7, 7), iterations=3)
 
         #cv.imwrite('../../open/Codes/basic/cap_eroded.png', cap_eroded)
-        self.ident = os.system("python basic_CNN_2class.py")
+        self.ident = os.system("python PyTorchMayProject.py")
 
-        #text = open('identified_output.txt').read()
-        #QtWidgets.QLineEdit.information(self,"info",text)
-        #text_edit.clear()
-        #try:
-        #    file_name = open('identified_output.txt').read()
-        #    File = open(file_name[0], "r", encoding='utf-8')
-        #    lines = File.readlines()
-        #except:
-        #    pass
+        file_path='prediction.txt'
 
-
-
-class ImageViewer(QtWidgets.QWidget):
-    def __init__(self, parent=None):
-        super(ImageViewer, self).__init__(parent)
-        self.image = QtGui.QImage()
-        self.setAttribute(QtCore.Qt.WA_OpaquePaintEvent)
-
-    def paintEvent(self, event):
-        painter = QtGui.QPainter(self)
-        painter.drawImage(0, 0, self.image)
-        self.image = QtGui.QImage()
-
-    def initUI(self):
-        self.setWindowTitle('Test')
-
-    @QtCore.pyqtSlot(QtGui.QImage)
-    def setImage(self, image):
-        if image.isNull():
-            print("Viewer Dropped frame!")
-
-        self.image = image
-        if image.size() != self.size():
-            self.setFixedSize(image.size())
-        self.update()
-
+        try:
+            with open(file_path, 'r') as file:
+                text = file.read()
+                self.text_edit.setPlainText(text)
+        except Exception as e:
+            print(f"Failed to load text file: {e}")
 
 if __name__ == '__main__':
-    app = QtWidgets.QApplication(sys.argv)
-
-    thread = QtCore.QThread()
-    thread.start()
-    vid = ShowVideo()
-    vid.moveToThread(thread)
-
-    image_viewer1 = ImageViewer()
-    image_viewer2 = ImageViewer()
-
-    vid.VideoSignal1.connect(image_viewer1.setImage)
-    vid.VideoSignal2.connect(image_viewer2.setImage)
-
-    push_button1 = QtWidgets.QPushButton('Camera')
-    push_button2 = QtWidgets.QPushButton('Image Processing')
-    push_button3 = QtWidgets.QPushButton('Identify')
-    push_button1.clicked.connect(vid.startVideo)
-    push_button2.clicked.connect(vid.canny)
-    push_button3.clicked.connect(vid.identify)
-
-    vertical_layout = QtWidgets.QVBoxLayout()
-    horizontal_layout = QtWidgets.QHBoxLayout()
-    horizontal_layout.addWidget(image_viewer1)
-    horizontal_layout.addWidget(image_viewer2)
-    vertical_layout.addLayout(horizontal_layout)
-    vertical_layout.addWidget(push_button1)
-    vertical_layout.addWidget(push_button2)
-    vertical_layout.addWidget(push_button3)
-
-    layout_widget = QtWidgets.QWidget()
-    layout_widget.setLayout(vertical_layout)
-
-    text_edit = QtWidgets.QLineEdit("텍스트")
-    vertical_layout.addWidget(text_edit)
-
-    main_window = QtWidgets.QMainWindow()
-    main_window.setCentralWidget(layout_widget)
-    main_window.show()
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
     sys.exit(app.exec_())
